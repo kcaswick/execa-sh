@@ -1,4 +1,5 @@
 # execa-sh [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Dependency Status][daviddm-image]][daviddm-url]
+
 > Add parsing, common shell builtins, and modules to execa to make a functional shell similar to ash or bash.
 
 ## Installation
@@ -10,14 +11,14 @@ $ npm install --save execa-sh
 ## Usage
 
 ```js
-const execaSh = require('execa-sh');
+const execaSh = require("execa-sh");
 
-execaSh('Rainbow');
+execaSh("Rainbow");
 ```
+
 ## License
 
 MIT © [Kevin C.]()
-
 
 [npm-image]: https://badge.fury.io/js/execa-sh.svg
 [npm-url]: https://npmjs.org/package/execa-sh

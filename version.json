@@ -4,11 +4,7 @@
   "assemblyVersion": {
     "precision": "revision"
   },
-  "publicReleaseRefSpec": [
-    "^refs/heads/master$",
-    "^refs/heads/main$", "^refs/heads/develop$",
-    "^refs/heads/v\\d+(?:\\.\\d+)?$"
-  ],
+  "publicReleaseRefSpec": ["^refs/heads/master$", "^refs/heads/main$", "^refs/heads/develop$", "^refs/heads/v\\d+(?:\\.\\d+)?$"],
   "cloudBuild": {
     "buildNumber": {
       "enabled": true
