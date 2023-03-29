@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2021",
+    "forceConsistentCasingInFileNames": true,
+    "module": "ES2020",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "skipLibCheck": true,
+    "outDir": "dist",
+    "inlineSources": false,
+    "strict": true,
+    "strictBindCallApply": true,
+    "strictNullChecks": true,
+    "noUnusedLocals": false,
+    "typeRoots": ["./node_modules/@types"],
+    "types": ["@types/jest"],
+    "lib": ["es6", "dom", "DOM.Iterable", "es2015.collection", "es2018", "ES2019"]
+  },
+  "include": ["lib/**/*.ts", "lib/**/*.tsx"]
+}

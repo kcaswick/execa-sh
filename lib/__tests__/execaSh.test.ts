@@ -1,5 +1,5 @@
-const assert = require('assert');
-const execaSh = require('../index.js');
+import assert from 'assert';
+import execaSh from '../index';
 
 describe('execaSh', () => {
   it('has a test', () => {
