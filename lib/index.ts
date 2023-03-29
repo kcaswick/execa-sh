@@ -1,2 +1,2 @@
 "use strict";
-export * from ".";
+export * from "./execa-sh";

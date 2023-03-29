@@ -17,7 +17,7 @@
     "strictNullChecks": true,
     "noUnusedLocals": false,
     "typeRoots": ["./node_modules/@types"],
-    "types": ["@types/jest"],
+    "types": ["@types/jest", "@types/node"],
     "lib": ["es6", "dom", "DOM.Iterable", "es2015.collection", "es2018", "ES2019"]
   },
   "include": ["lib/**/*.ts", "lib/**/*.tsx"]
