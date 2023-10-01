@@ -23,7 +23,9 @@
     "synchronous"
   ],
   "dependencies": {
+    "define-lazy-prop": "^3.0.0",
     "execa": "^7.1.1",
+    "remeda": "^1.27.0",
     "shelljs": "^0.8.5",
     "tree-sitter": "^0.20.5",
     "tree-sitter-bash": "^0.20.3",
@@ -108,6 +110,7 @@
       "node": true
     },
     "rules": {
+      "capitalized-comments": "off",
       "prettier/prettier": "warn",
       "no-redeclare": "off",
       "@typescript-eslint/no-redeclare": [
@@ -121,7 +124,7 @@
     "pretest": "eslint lib",
     "prepare": "husky install",
     "prettify": "prettier --write .",
-    "test": "jest"
+    "test": "vitest run"
   },
   "repository": "https://github.com/kcaswick/execa-sh.git",
   "jest": {
