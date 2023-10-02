@@ -20,6 +20,7 @@ describe("compile", () => {
     const tree = parse(code);
     const result = compile(tree); // Result should be identical to () => execa.$`echo ${"Hello, world!"}`
 
+    console.debug(result.toString());
     expect(typeof result).toBe("function");
 
     const execution = result();
@@ -27,6 +28,37 @@ describe("compile", () => {
     expect(execution.spawnargs).toEqual(["echo", "Hello, world!"]);
 
     expect(execution).resolves.toHaveProperty("stdout", "Hello, world!");
+    expect(execution).resolves.toHaveProperty("exitCode", 0);
+  });
+
+  it("compile sequence of commands", () => {
+    const code = `
+    echo "Hello..."; echo "world!";
+    # Test sequential commands
+  `;
+
+    const tree = parse(code);
+    const result = compile(tree); // Result should be identical to () => execa.$`echo ${"Hello, world!"}`
+
+    expect(typeof result).toBe("function");
+    console.debug(result.toString());
+
+    const execution = result();
+
+    expect(execution).resolves.toHaveProperty("stdout", "Hello...\nworld!");
+    expect(execution).resolves.toHaveProperty("exitCode", 0);
+  });
+
+  it("compile string expansion", () => {
+    // eslint-disable-next-line no-template-curly-in-string
+    const code = 'echo word $SHELL concat_$SHELL infix_${SHELL}_suffix "quoted_$SHELL"';
+
+    const tree = parse(code);
+    const result = compile(tree);
+    console.debug(result.toString());
+    const execution = result();
+
+    expect(execution).resolves.toHaveProperty("stdout", "word /bin/bash concat_/bin/bash infix_/bin/bash_suffix quoted_/bin/bash");
     expect(execution).resolves.toHaveProperty("exitCode", 0);
   });
 });

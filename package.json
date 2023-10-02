@@ -37,6 +37,7 @@
     "@types/shelljs": "^0.8.11",
     "@types/yargs": "^17.0.24",
     "@typescript-eslint/eslint-plugin": "^5.57.0",
+    "@vitest/ui": "^0.34.6",
     "assert": "^2.0.0",
     "eslint": "^8.37.0",
     "eslint-config-prettier": "^8.8.0",
