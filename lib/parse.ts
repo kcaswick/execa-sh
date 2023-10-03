@@ -108,12 +108,12 @@ export function compile(tree: TreeSitter.Tree): () => ExecaChildProcess {
   return result as () => ExecaChildProcess;
 }
 
-function processCommand(currentNode: TreeSitter.SyntaxNode, cursor: TreeSitter.TreeCursor): ICompiledSubtree<ExecaChildProcess> {
+function processCommand(
+  currentNode: TreeSitter.SyntaxNode,
+  cursor: TreeSitter.TreeCursor,
+  children: ICompiledSubtree[]
+): ICompiledSubtree<ExecaChildProcess> {
   console.debug("DEBUG: " + currentNode.text, currentNode, currentNode.children);
-  // To keep the cursor we need to process in order, but then how do we grab child nodes by type?
-  cursor.gotoFirstChild(); // TODO: Handle false?
-  const children = processSubtree(cursor);
-  cursor.gotoParent();
   const commandNameNodes = currentNode.descendantsOfType("command_name");
   const command =
     commandNameNodes.length === 1
@@ -164,10 +164,7 @@ function processCommand(currentNode: TreeSitter.SyntaxNode, cursor: TreeSitter.T
   };
 }
 
-function processCommandName(cursor: TreeSitter.TreeCursor, currentNode: TreeSitter.SyntaxNode) {
-  cursor.gotoFirstChild();
-  const children = processSubtree(cursor);
-  cursor.gotoParent();
+function processCommandName(cursor: TreeSitter.TreeCursor, currentNode: TreeSitter.SyntaxNode, children: ICompiledSubtree[]) {
   // Should always be a single child
   if (children.every((child) => child.value)) {
     return {
@@ -205,19 +202,20 @@ function processComment(currentNode: TreeSitter.SyntaxNode, fieldName: string): 
   };
 }
 
-function processExpansion(cursor: TreeSitter.TreeCursor, currentNode: TreeSitter.SyntaxNode): Partial<ICompiledSubtree<unknown>> {
-  cursor.gotoFirstChild();
-  const children = processSubtree(cursor);
-  cursor.gotoParent();
+function processExpansion(
+  cursor: TreeSitter.TreeCursor,
+  currentNode: TreeSitter.SyntaxNode,
+  children: ICompiledSubtree[]
+): Partial<ICompiledSubtree<unknown>> {
+  const operator = children.filter((child) => child.fieldName === "operator");
+  if (operator.length > 0) {
+    throw new Error(`Operators in expansions are not supported: ${operator.map((child) => child.text).join(", ")}`);
+  }
 
   throw new Error("Function not implemented.");
 }
 
-function processSimpleExpansion(cursor: TreeSitter.TreeCursor, currentNode: TreeSitter.SyntaxNode) {
-  cursor.gotoFirstChild();
-  const children = processSubtree(cursor);
-  cursor.gotoParent();
-
+function processSimpleExpansion(cursor: TreeSitter.TreeCursor, currentNode: TreeSitter.SyntaxNode, children: ICompiledSubtree[]) {
   if (children.length > 1) {
     throw new Error(`Expected 1 child, got ${children.length}`);
   }
@@ -254,14 +252,18 @@ function processSubtree(cursor: TreeSitter.TreeCursor): ICompiledSubtree[] {
       continue;
     }
 
+    const hasChildren = cursor.gotoFirstChild();
+    const children = hasChildren ? processSubtree(cursor) : [];
+    if (hasChildren) cursor.gotoParent();
+
     switch (currentNode.type) {
       case "command":
-        result.push(processCommand(currentNode, cursor));
+        result.push(processCommand(currentNode, cursor, children));
 
         break;
 
       case "command_name":
-        result.push(processCommandName(cursor, currentNode));
+        result.push(processCommandName(cursor, currentNode, children));
 
         break;
 
@@ -272,10 +274,6 @@ function processSubtree(cursor: TreeSitter.TreeCursor): ICompiledSubtree[] {
       case "concatenation":
       case "string":
         {
-          cursor.gotoFirstChild();
-          const children = processSubtree(cursor);
-          cursor.gotoParent();
-
           let text: string;
           let value: string;
           if (children.length > 0) {
@@ -310,11 +308,11 @@ function processSubtree(cursor: TreeSitter.TreeCursor): ICompiledSubtree[] {
         break;
 
       case "expansion":
-        result.push(processExpansion(cursor, currentNode));
+        result.push(processExpansion(cursor, currentNode, children));
         break;
 
       case "simple_expansion":
-        result.push(processSimpleExpansion(cursor, currentNode));
+        result.push(processSimpleExpansion(cursor, currentNode, children));
         break;
 
       case "variable_name":
@@ -345,7 +343,7 @@ function processSubtree(cursor: TreeSitter.TreeCursor): ICompiledSubtree[] {
         const message = `Unhandled node type: ${currentNode.type} (${currentNode.text}) for '${cursor.currentFieldName}'`;
         console.debug(`DEBUG: ${message}`);
         result.push({
-          children: [],
+          children,
           compiled: () => {
             throw new Error(message);
           },
