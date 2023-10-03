@@ -212,7 +212,17 @@ function processExpansion(
     throw new Error(`Operators in expansions are not supported: ${operator.map((child) => child.text).join(", ")}`);
   }
 
-  throw new Error("Function not implemented.");
+  const expandedChildren = children.map((child) => {
+    switch (child.source.type) {
+      case "variable_name":
+        return processSimpleExpansion(cursor, currentNode, [child]);
+
+      default:
+        return child;
+    }
+  });
+
+  return processConcatenation(cursor, currentNode, expandedChildren);
 }
 
 function processSimpleExpansion(cursor: TreeSitter.TreeCursor, currentNode: TreeSitter.SyntaxNode, children: ICompiledSubtree[]) {
@@ -273,38 +283,7 @@ function processSubtree(cursor: TreeSitter.TreeCursor): ICompiledSubtree[] {
 
       case "concatenation":
       case "string":
-        {
-          let text: string;
-          let value: string;
-          if (children.length > 0) {
-            text = children.map((child) => child.text).join("");
-            value = children.map((child) => child.value).join("");
-          } else {
-            text = currentNode.text;
-            value = JSON.parse(currentNode.text);
-          }
-
-          if (children.every((child) => child.value) || children.length === 0) {
-            result.push({
-              children,
-              compiled: () => value,
-              fieldName: cursor.currentFieldName,
-              source: currentNode,
-              text,
-              value,
-            });
-          } else {
-            result.push({
-              children,
-              compiled: () => children.map((child) => child.value ?? child.compiled?.()).join(""),
-              fieldName: cursor.currentFieldName,
-              source: currentNode,
-              text,
-              value: undefined,
-            });
-          }
-        }
-
+        result.push(processConcatenation(cursor, currentNode, children));
         break;
 
       case "expansion":
@@ -357,6 +336,42 @@ function processSubtree(cursor: TreeSitter.TreeCursor): ICompiledSubtree[] {
   } while (cursor.gotoNextSibling());
 
   return result as ICompiledSubtree[];
+}
+
+function processConcatenation(
+  cursor: TreeSitter.TreeCursor,
+  currentNode: TreeSitter.SyntaxNode,
+  children: ICompiledSubtree<unknown>[]
+) {
+  let text: string;
+  let value: string;
+  if (children.length > 0) {
+    text = children.map((child) => child.text).join(" + ");
+    value = children.map((child) => child.value).join("");
+  } else {
+    text = currentNode.text;
+    value = JSON.parse(currentNode.text);
+  }
+
+  if (children.every((child) => child.value) || children.length === 0) {
+    return {
+      children,
+      compiled: () => value,
+      fieldName: cursor.currentFieldName,
+      source: currentNode,
+      text,
+      value,
+    };
+  }
+
+  return {
+    children,
+    compiled: () => children.map((child) => child.value ?? child.compiled?.()).join(""),
+    fieldName: cursor.currentFieldName,
+    source: currentNode,
+    text,
+    value: undefined,
+  };
 }
 
 function escapeIdentifier(identifier: string) {

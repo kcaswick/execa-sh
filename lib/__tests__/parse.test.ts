@@ -31,7 +31,7 @@ describe("compile", () => {
     expect(execution).resolves.toHaveProperty("exitCode", 0);
   });
 
-  it("compile sequence of commands", () => {
+  it("compile sequence of commands", async () => {
     const code = `
     echo "Hello..."; echo "world!";
     # Test sequential commands
@@ -44,12 +44,13 @@ describe("compile", () => {
     console.debug(result.toString());
 
     const execution = result();
+    const executed = await execution;
 
-    expect(execution).resolves.toHaveProperty("stdout", "Hello...\nworld!");
+    expect(executed.stdout).toEqual("Hello...\nworld!");
     expect(execution).resolves.toHaveProperty("exitCode", 0);
   });
 
-  it("compile string expansion", () => {
+  it("compile string expansion", async () => {
     // eslint-disable-next-line no-template-curly-in-string
     const code = 'echo word $SHELL concat_$SHELL infix_${SHELL}_suffix "quoted_$SHELL"';
 
@@ -57,7 +58,9 @@ describe("compile", () => {
     const result = compile(tree);
     console.debug(result.toString());
     const execution = result();
+    const executed = await execution;
 
+    expect(executed.stdout).toEqual("word /bin/bash concat_/bin/bash infix_/bin/bash_suffix quoted_/bin/bash");
     expect(execution).resolves.toHaveProperty("stdout", "word /bin/bash concat_/bin/bash infix_/bin/bash_suffix quoted_/bin/bash");
     expect(execution).resolves.toHaveProperty("exitCode", 0);
   });
