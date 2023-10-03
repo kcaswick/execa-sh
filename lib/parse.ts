@@ -108,187 +108,6 @@ export function compile(tree: TreeSitter.Tree): () => ExecaChildProcess {
   return result as () => ExecaChildProcess;
 }
 
-function processComment(currentNode: TreeSitter.SyntaxNode, fieldName: string): ICompiledSubtree<undefined> {
-  if (currentNode.childCount > 0) {
-    currentNode.children.forEach((child) => {
-      console.debug("DEBUG: " + child.toString());
-    });
-  }
-
-  return {
-    children: [],
-    compiled: null,
-    fieldName: fieldName,
-    source: currentNode,
-    text: currentNode.text.replace(/^(\s*)#/, "$1//"),
-    value: undefined,
-  };
-}
-
-function processSubtree(cursor: TreeSitter.TreeCursor): ICompiledSubtree[] {
-  const result: Partial<ICompiledSubtree>[] = [];
-  do {
-    const currentNode = cursor.currentNode;
-    console.debug("DEBUG: " + currentNode.toString());
-    if (!currentNode.isNamed) {
-      continue;
-    }
-
-    switch (currentNode.type) {
-      case "command":
-        result.push(processCommand(currentNode, cursor));
-
-        break;
-
-      case "command_name":
-        {
-          cursor.gotoFirstChild();
-          const children = processSubtree(cursor);
-          cursor.gotoParent();
-          // Should always be a single child
-          if (children.every((child) => child.value)) {
-            result.push({
-              children,
-              compiled: () => children.map((child) => child.value).join(" "),
-              source: currentNode,
-              text: `"${escapeForDoubleQuote(children.map((child) => child.text).join(" "))}"`,
-              value: children.map((child) => child.value).join(" "),
-            });
-          } else {
-            result.push({
-              children,
-              compiled: () => children.map((child) => child.compiled?.()).join(" "),
-              source: currentNode,
-              text: `"${escapeForDoubleQuote(children.map((child) => child.text).join(" "))}"`,
-              value: undefined,
-            });
-          }
-        }
-
-        break;
-      case "comment":
-        result.push(processComment(currentNode, cursor.currentFieldName));
-        break;
-
-      case "concatenation":
-      case "string":
-        {
-          cursor.gotoFirstChild();
-          const children = processSubtree(cursor);
-          cursor.gotoParent();
-
-          let text: string;
-          let value: string;
-          if (children.length > 0) {
-            text = children.map((child) => child.text).join("");
-            value = children.map((child) => child.value).join("");
-          } else {
-            text = currentNode.text;
-            value = JSON.parse(currentNode.text);
-          }
-
-          if (children.every((child) => child.value) || children.length === 0) {
-            result.push({
-              children,
-              compiled: () => value,
-              fieldName: cursor.currentFieldName,
-              source: currentNode,
-              text,
-              value,
-            });
-          } else {
-            result.push({
-              children,
-              compiled: () => children.map((child) => child.value ?? child.compiled?.()).join(""),
-              fieldName: cursor.currentFieldName,
-              source: currentNode,
-              text,
-              value: undefined,
-            });
-          }
-        }
-
-        break;
-
-      case "simple_expansion":
-        {
-          cursor.gotoFirstChild();
-          const children = processSubtree(cursor);
-          cursor.gotoParent();
-
-          if (children.length > 1) {
-            throw new Error(`Expected 1 child, got ${children.length}`);
-          }
-
-          if (children[0].source.type !== "variable_name" && children[0].source.type !== "special_variable_name") {
-            throw new Error(
-              `Expected variable name, got ${children[0].source.type} :${children[0].source.startPosition.row}:${children[0].source.startPosition.column}`
-            );
-          }
-
-          const varName = children[0].value;
-
-          if (!isString(varName)) {
-            throw new Error(`Expected string for variable name, got ${typeof varName}`);
-          }
-
-          result.push({
-            children,
-            // TODO: Support variables that haven't been exported
-            compiled: () => process.env[varName],
-            fieldName: cursor.currentFieldName,
-            name: varName,
-            source: currentNode,
-            text: `process.env.${escapeIdentifier(varName)}`,
-          });
-        }
-
-        break;
-
-      case "variable_name":
-        result.push({
-          children: [],
-          compiled: () => currentNode.text,
-          fieldName: cursor.currentFieldName,
-          source: currentNode,
-          name: currentNode.text,
-          text: currentNode.text,
-          value: currentNode.text,
-        });
-        break;
-
-      case "ansi_c_string":
-      case "word":
-        result.push({
-          children: [],
-          compiled: () => currentNode.text,
-          fieldName: cursor.currentFieldName,
-          source: currentNode,
-          text: `"${currentNode.text}"`,
-          value: currentNode.text,
-        });
-        break;
-
-      default: {
-        const message = `Unhandled node type: ${currentNode.type} (${currentNode.text}) for '${cursor.currentFieldName}'`;
-        console.debug(`DEBUG: ${message}`);
-        result.push({
-          children: [],
-          compiled: () => {
-            throw new Error(message);
-          },
-          fieldName: cursor.currentFieldName,
-          source: currentNode,
-          text: `/* ${message} */`,
-          value: undefined,
-        });
-      }
-    }
-  } while (cursor.gotoNextSibling());
-
-  return result as ICompiledSubtree[];
-}
-
 function processCommand(currentNode: TreeSitter.SyntaxNode, cursor: TreeSitter.TreeCursor): ICompiledSubtree<ExecaChildProcess> {
   console.debug("DEBUG: " + currentNode.text, currentNode, currentNode.children);
   // To keep the cursor we need to process in order, but then how do we grab child nodes by type?
@@ -343,6 +162,203 @@ function processCommand(currentNode: TreeSitter.SyntaxNode, cursor: TreeSitter.T
       .map((child) => `${child.name}: ${child.text}`)
       .join(", ")} } })`,
   };
+}
+
+function processCommandName(cursor: TreeSitter.TreeCursor, currentNode: TreeSitter.SyntaxNode) {
+  cursor.gotoFirstChild();
+  const children = processSubtree(cursor);
+  cursor.gotoParent();
+  // Should always be a single child
+  if (children.every((child) => child.value)) {
+    return {
+      children,
+      compiled: () => children.map((child) => child.value).join(" "),
+      source: currentNode,
+      text: `"${escapeForDoubleQuote(children.map((child) => child.text).join(" "))}"`,
+      value: children.map((child) => child.value).join(" "),
+    };
+  }
+
+  return {
+    children,
+    compiled: () => children.map((child) => child.compiled?.()).join(" "),
+    source: currentNode,
+    text: `"${escapeForDoubleQuote(children.map((child) => child.text).join(" "))}"`,
+    value: undefined,
+  };
+}
+
+function processComment(currentNode: TreeSitter.SyntaxNode, fieldName: string): ICompiledSubtree<undefined> {
+  if (currentNode.childCount > 0) {
+    currentNode.children.forEach((child) => {
+      console.debug("DEBUG: " + child.toString());
+    });
+  }
+
+  return {
+    children: [],
+    compiled: null,
+    fieldName: fieldName,
+    source: currentNode,
+    text: currentNode.text.replace(/^(\s*)#/, "$1//"),
+    value: undefined,
+  };
+}
+
+function processExpansion(cursor: TreeSitter.TreeCursor, currentNode: TreeSitter.SyntaxNode): Partial<ICompiledSubtree<unknown>> {
+  cursor.gotoFirstChild();
+  const children = processSubtree(cursor);
+  cursor.gotoParent();
+
+  throw new Error("Function not implemented.");
+}
+
+function processSimpleExpansion(cursor: TreeSitter.TreeCursor, currentNode: TreeSitter.SyntaxNode) {
+  cursor.gotoFirstChild();
+  const children = processSubtree(cursor);
+  cursor.gotoParent();
+
+  if (children.length > 1) {
+    throw new Error(`Expected 1 child, got ${children.length}`);
+  }
+
+  if (children[0].source.type !== "variable_name" && children[0].source.type !== "special_variable_name") {
+    throw new Error(
+      `Expected variable name, got ${children[0].source.type} :${children[0].source.startPosition.row}:${children[0].source.startPosition.column}`
+    );
+  }
+
+  const varName = children[0].value;
+
+  if (!isString(varName)) {
+    throw new Error(`Expected string for variable name, got ${typeof varName}`);
+  }
+
+  return {
+    children,
+    // TODO: Support variables that haven't been exported
+    compiled: () => process.env[varName],
+    fieldName: cursor.currentFieldName,
+    name: varName,
+    source: currentNode,
+    text: `process.env.${escapeIdentifier(varName)}`,
+  };
+}
+
+function processSubtree(cursor: TreeSitter.TreeCursor): ICompiledSubtree[] {
+  const result: Partial<ICompiledSubtree>[] = [];
+  do {
+    const currentNode = cursor.currentNode;
+    console.debug("DEBUG: " + currentNode.toString());
+    if (!currentNode.isNamed) {
+      continue;
+    }
+
+    switch (currentNode.type) {
+      case "command":
+        result.push(processCommand(currentNode, cursor));
+
+        break;
+
+      case "command_name":
+        result.push(processCommandName(cursor, currentNode));
+
+        break;
+
+      case "comment":
+        result.push(processComment(currentNode, cursor.currentFieldName));
+        break;
+
+      case "concatenation":
+      case "string":
+        {
+          cursor.gotoFirstChild();
+          const children = processSubtree(cursor);
+          cursor.gotoParent();
+
+          let text: string;
+          let value: string;
+          if (children.length > 0) {
+            text = children.map((child) => child.text).join("");
+            value = children.map((child) => child.value).join("");
+          } else {
+            text = currentNode.text;
+            value = JSON.parse(currentNode.text);
+          }
+
+          if (children.every((child) => child.value) || children.length === 0) {
+            result.push({
+              children,
+              compiled: () => value,
+              fieldName: cursor.currentFieldName,
+              source: currentNode,
+              text,
+              value,
+            });
+          } else {
+            result.push({
+              children,
+              compiled: () => children.map((child) => child.value ?? child.compiled?.()).join(""),
+              fieldName: cursor.currentFieldName,
+              source: currentNode,
+              text,
+              value: undefined,
+            });
+          }
+        }
+
+        break;
+
+      case "expansion":
+        result.push(processExpansion(cursor, currentNode));
+        break;
+
+      case "simple_expansion":
+        result.push(processSimpleExpansion(cursor, currentNode));
+        break;
+
+      case "variable_name":
+        result.push({
+          children: [],
+          compiled: () => currentNode.text,
+          fieldName: cursor.currentFieldName,
+          source: currentNode,
+          name: currentNode.text,
+          text: currentNode.text,
+          value: currentNode.text,
+        });
+        break;
+
+      case "ansi_c_string":
+      case "word":
+        result.push({
+          children: [],
+          compiled: () => currentNode.text,
+          fieldName: cursor.currentFieldName,
+          source: currentNode,
+          text: `"${currentNode.text}"`,
+          value: currentNode.text,
+        });
+        break;
+
+      default: {
+        const message = `Unhandled node type: ${currentNode.type} (${currentNode.text}) for '${cursor.currentFieldName}'`;
+        console.debug(`DEBUG: ${message}`);
+        result.push({
+          children: [],
+          compiled: () => {
+            throw new Error(message);
+          },
+          fieldName: cursor.currentFieldName,
+          source: currentNode,
+          text: `/* ${message} */`,
+          value: undefined,
+        });
+      }
+    }
+  } while (cursor.gotoNextSibling());
+
+  return result as ICompiledSubtree[];
 }
 
 function escapeIdentifier(identifier: string) {
