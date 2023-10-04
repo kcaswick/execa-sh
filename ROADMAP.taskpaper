@@ -1,0 +1,37 @@
+Current focus:
+  - Fix issue with `expansion` not including the quoted string portion @created(2023-10-03T21:11)
+
+MVP:
+  - Handle pipes @created(2023-10-03T21:19)
+  - Handle `&&` @created(2023-10-03T21:19)
+  - Handle output redirection (`>`) @created(2023-10-04T00:10)
+  - Implement xtrace / xtrace_rich to simplify debugging? @created(2023-10-04T00:11)
+  - REPL or is that phase 2? @created(2023-10-04T00:25)
+
+TODOs embedded in comments:
+  FIX:
+    @file:///home/lebleu/repos/execa-sh/package.json
+      - "eslint --fix", @file:///home/lebleu/repos/execa-sh/package.json#73
+
+  TODO:
+    @file:///home/lebleu/repos/execa-sh/lib/execa-sh.ts
+      - // TODO: Insert parsing here @file:///home/lebleu/repos/execa-sh/lib/execa-sh.ts#39
+    @file:///home/lebleu/repos/execa-sh/lib/parse.ts
+      - // TODO: Pick by command type, might want to execaNode for shx built-ins @file:///home/lebleu/repos/execa-sh/lib/parse.ts#137
+      - // TODO: Handle redirects @file:///home/lebleu/repos/execa-sh/lib/parse.ts#156
+      - // TODO: Support variables that haven't been exported @file:///home/lebleu/repos/execa-sh/lib/parse.ts#247
+      - // TODO: Actually implement this, so property names with spaces and funny chars work @file:///home/lebleu/repos/execa-sh/lib/parse.ts#378
+    @file:///home/lebleu/repos/execa-sh/temp/test/lcov-report/execa-sh.ts.html
+      - // TODO: Insert parsing here @file:///home/lebleu/repos/execa-sh/temp/test/lcov-report/execa-sh.ts.html#214
+
+Phase 2:
+  - Assess most commonly used AST node types @created(2023-10-03T21:21)
+    - Scan top npm packages for shell commands in package.json, and script files.
+    - Feed all of those to tree-sitter to get the AST @created(2023-10-03T21:22)
+    - Count the most common AST node types @created(2023-10-03T21:22)
+    - Use that to prioritize which AST node types to support first @created(2023-10-03T21:22)
+
+Parking lot:
+  - Support nested JavaScript in one of `${}` or `()` @created(2023-10-03T21:23)
+    - Add shopt to control this @created(2023-10-03T21:24)
+  - Investigate using oilshell's test suites to test our POSIX or Bash-like behavior @created(2023-10-03T21:30)
