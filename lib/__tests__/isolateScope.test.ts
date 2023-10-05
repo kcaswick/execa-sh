@@ -10,15 +10,15 @@ describe("isolateScope", () => {
       return x + y;
     `;
     const isolatedFunction = isolateScope(code);
-    expect(isolatedFunction()).toBe(3);
+    expect(isolatedFunction({})).toBe(3);
   });
 
   it("should not have access to global variables", () => {
     const code = `
-      return typeof global;
+      return typeof global.global;
     `;
     const isolatedFunction = isolateScope(code);
-    expect(isolatedFunction()).toBe("undefined");
+    expect(isolatedFunction({})).toBe("undefined");
   });
 
   it("should not have access to the eval function", () => {
@@ -26,7 +26,7 @@ describe("isolateScope", () => {
       return typeof eval;
     `;
     const isolatedFunction = isolateScope(code);
-    expect(isolatedFunction()).toBe("undefined");
+    expect(isolatedFunction({})).toBe("undefined");
   });
 
   it("should not have access to the Function constructor", () => {
@@ -34,7 +34,7 @@ describe("isolateScope", () => {
       return typeof Function;
     `;
     const isolatedFunction = isolateScope(code);
-    expect(isolatedFunction()).toBe("undefined");
+    expect(isolatedFunction({})).toBe("undefined");
   });
 
   it("should not have access to the function prototype", () => {
@@ -42,7 +42,7 @@ describe("isolateScope", () => {
       return typeof (()=>false).__proto__.constructor;
     `;
     const isolatedFunction = isolateScope(code);
-    expect(isolatedFunction()).toBe("undefined");
+    expect(isolatedFunction({})).toBe("undefined");
   });
 
   it("should not have indirect access to the Function constructor", () => {
@@ -50,7 +50,7 @@ describe("isolateScope", () => {
       return typeof (()=>false).__proto__.constructor?.("return Function")();
     `;
     const isolatedFunction = isolateScope(code);
-    expect(isolatedFunction()).toBe("undefined");
+    expect(isolatedFunction({})).toBe("undefined");
   });
 
   it("should escape inner strings", () => {
@@ -59,6 +59,6 @@ describe("isolateScope", () => {
       return x;
     `;
     const isolatedFunction = isolateScope(code);
-    expect(isolatedFunction()).toBe("hello");
+    expect(isolatedFunction({})).toBe("hello");
   });
 });
